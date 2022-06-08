@@ -17,7 +17,6 @@ import io.airbyte.commons.string.Strings;
 import io.airbyte.db.jdbc.JdbcSourceOperations;
 import io.airbyte.integrations.source.jdbc.AbstractJdbcSource;
 import io.airbyte.integrations.source.jdbc.test.JdbcSourceAcceptanceTest;
-import io.airbyte.integrations.source.relationaldb.models.DbState;
 import io.airbyte.integrations.source.relationaldb.models.DbStreamState;
 import io.airbyte.protocol.models.AirbyteCatalog;
 import io.airbyte.protocol.models.AirbyteMessage;
@@ -175,7 +174,7 @@ class PostgresJdbcSourceAcceptanceTest extends JdbcSourceAcceptanceTest {
   }
 
   @Override
-  protected List<AirbyteMessage> getExpectedAirbyteMessagesSecondSync(String namespace) {
+  protected List<AirbyteMessage> getExpectedAirbyteMessagesSecondSync(final String namespace) {
     final List<AirbyteMessage> expectedMessages = new ArrayList<>();
     expectedMessages.add(new AirbyteMessage().withType(AirbyteMessage.Type.RECORD)
         .withRecord(new AirbyteRecordMessage().withStream(streamName).withNamespace(namespace)
@@ -189,17 +188,20 @@ class PostgresJdbcSourceAcceptanceTest extends JdbcSourceAcceptanceTest {
                 .of(COL_ID, ID_VALUE_5,
                     COL_NAME, "data",
                     COL_UPDATED_AT, "2006-10-19")))));
+    final DbStreamState state = new DbStreamState()
+        .withStreamName(streamName)
+        .withStreamNamespace(namespace)
+        .withCursorField(ImmutableList.of(COL_ID))
+        .withCursor("5");
     expectedMessages.add(new AirbyteMessage()
         .withType(AirbyteMessage.Type.STATE)
-        .withState(new AirbyteStateMessage()
-            .withData(Jsons.jsonNode(new DbState()
-                .withCdc(false)
-                .withStreams(Lists.newArrayList(new DbStreamState()
-                    .withStreamName(streamName)
-                    .withStreamNamespace(namespace)
-                    .withCursorField(ImmutableList.of(COL_ID))
-                    .withCursor("5")))))));
+        .withState(Jsons.object(createState(List.of(state)), AirbyteStateMessage.class)));
     return expectedMessages;
+  }
+
+  @Override
+  protected boolean supportsPerStream() {
+    return true;
   }
 
 }
